@@ -12,12 +12,13 @@ from diagrams.onprem.client import User
 from diagrams.onprem.compute import Server
 
 graph_attr = {
-        "viewport": "800,600"
+        "viewport": "1024,768"
 }
 
 with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="LR", show=False):
     cron = Eventbridge("Cron(daily)")
-    bucket = S3("Raw Data")
+    bucket_raw = S3("Raw Data")
+    bucket_static = S3("Static Data")
 
     lambda_crawler = Lambda("Crawler")
     lambda_extractor = Lambda("Extractor")
@@ -35,11 +36,13 @@ with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="LR", 
 
     with Cluster("Collection and Enrichment"):
         cron >> Edge(label="Fires") >> lambda_crawler << Edge(label="Get Web Page") << webserver
-        lambda_crawler >> Edge(label="Saves Raw Data") >> bucket
-        bucket >> Edge(label="Trigger S3 Event") >> lambda_extractor >> Edge(label="Save Enrichment Data") >> ddb_table
-        ddb_table - Edge(label="Aggregate Data") - lambda_aggregator
+        lambda_crawler >> Edge(label="Saves Raw Data") >> bucket_raw
+        bucket_raw >> Edge(label="Trigger S3 Event") >> lambda_extractor >> Edge(label="Save Enrichment Data") >> ddb_table
+        ddb_table >> Edge(label="Publish to Stream") >> lambda_aggregator
+        lambda_aggregator >> Edge(label="Save Aggregated Data") >> bucket_static
 
     with Cluster("User interaction"):
         user >> Edge(label="Access") >> frontend
         frontend >> Edge(label="Request") >> api_dns_entrypoint >> Edge(label="Resolves") >> api_gateway_entrypoint
         api_gateway_entrypoint >> Edge(label="Trigger") >> lambda_search >> Edge(label="Query") >> ddb_table
+        lambda_search >> Edge(label="Get Static") >> bucket_static
