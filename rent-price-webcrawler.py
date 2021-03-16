@@ -3,7 +3,7 @@ from diagrams import Cluster, Diagram, Edge
 from diagrams.aws.analytics import KinesisDataStreams, KinesisDataFirehose
 from diagrams.aws.compute import Lambda
 from diagrams.aws.database import DDB
-from diagrams.aws.integration import Eventbridge
+from diagrams.aws.integration import Eventbridge, SQS
 from diagrams.aws.mobile import Amplify
 from diagrams.aws.network import APIGateway, Route53
 from diagrams.aws.storage import S3
@@ -17,7 +17,7 @@ graph_attr = {
 
 with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="LR", show=False):
     cron = Eventbridge("Cron(daily)")
-    bucket_raw = S3("Raw Data")
+    bucket_raw = SQS("Raw Data")
     bucket_static = S3("Static Data")
 
     lambda_crawler = Lambda("Crawler")
@@ -37,7 +37,7 @@ with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="LR", 
     with Cluster("Collection and Enrichment"):
         cron >> Edge(label="Fires") >> lambda_crawler << Edge(label="Get Web Page") << webserver
         lambda_crawler >> Edge(label="Saves Raw Data") >> bucket_raw
-        bucket_raw >> Edge(label="Trigger S3 Event") >> lambda_extractor >> Edge(label="Save Enrichment Data") >> ddb_table
+        bucket_raw >> Edge(label="Send to Listeners") >> lambda_extractor >> Edge(label="Save Enrichment Data") >> ddb_table
         ddb_table >> Edge(label="Publish to Stream") >> lambda_aggregator
         lambda_aggregator >> Edge(label="Save Aggregated Data") >> bucket_static
 
