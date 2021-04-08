@@ -31,8 +31,8 @@ with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="TB", 
 
     with Cluster("Collection and Enrichment"):
         cron >> Edge(label="Fires") >> lambda_crawler << Edge(label="Get Web Page") << webserver
-        lambda_crawler >> Edge(label="Publish to Stream") >> ddb_table
-        ddb_table - Edge(label="Publish to Stream") - lambda_enrichment
+        lambda_crawler >> Edge(label="Write to Table") >> ddb_table
+        ddb_table - Edge(label="Write to Table") - lambda_enrichment
 
     with Cluster("User interaction"):
         user >> Edge(label="Access") >> frontend
