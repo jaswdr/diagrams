@@ -14,7 +14,7 @@ graph_attr = {
         "viewport": "1024,768"
 }
 
-with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="LR", show=False):
+with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="TB", show=False):
     cron = Eventbridge("Cron(daily)")
 
     lambda_crawler = Lambda("Crawler")
