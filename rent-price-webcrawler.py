@@ -21,6 +21,7 @@ with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="TB", 
     lambda_enrichment = Lambda("Enrichment")
     lambda_search = Lambda("Search")
 
+    sqs_queue = SQS("Offers Enrichment")
     ddb_table = DDB("Offers")
 
     frontend = Amplify("Frontend")
@@ -30,11 +31,14 @@ with Diagram(filename="rent-price-webcrawler", outformat="jpg", direction="TB", 
     webserver = Server("Webserver")
 
     with Cluster("Collection and Enrichment"):
-        cron >> Edge(label="Fires") >> lambda_crawler << Edge(label="Get Web Page") << webserver
+        cron >> Edge(label="Trigger") >> lambda_crawler << Edge(label="Get Web Page") << webserver
+        lambda_crawler >> Edge(label="Send message to Queue") >> sqs_queue
         lambda_crawler >> Edge(label="Write to Table") >> ddb_table
-        ddb_table - Edge(label="Write to Table") - lambda_enrichment
+        sqs_queue >> Edge(label="Send message to Listener") >> lambda_enrichment
+        lambda_enrichment >> Edge(label="Write to Table") >> ddb_table 
 
     with Cluster("User interaction"):
         user >> Edge(label="Access") >> frontend
         frontend >> Edge(label="Request") >> api_gateway_entrypoint
-        api_gateway_entrypoint >> Edge(label="Trigger") >> lambda_search >> Edge(label="Query") >> ddb_table
+        api_gateway_entrypoint >> Edge(label="Trigger") >> lambda_search
+        lambda_search >> Edge(label="Query") >> ddb_table
